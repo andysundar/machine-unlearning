@@ -1,0 +1,16 @@
+name: sisa-unlearning
+channels:
+  - pytorch
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pytorch
+  - torchvision
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - reportlab
+  - certifi
+  - pip
+  - pip:
+      - -r requirements.txt

@@ -1,0 +1,8 @@
+# Minimal, OS-agnostic requirements
+torch>=2.2
+torchvision>=0.17
+scikit-learn>=1.3
+pandas>=2.0
+matplotlib>=3.7
+reportlab>=4.0
+certifi>=2024.2.2

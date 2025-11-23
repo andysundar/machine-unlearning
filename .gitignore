@@ -1,0 +1,15 @@
+data/
+results/logs/
+results/plots/
+results/ckpts/
+src/__pycache__/
+
+__pycache__
+.DS_Store
+
+repro.md
+*.pt 
+*.pyc
+results/report.pdf
+results/results_summary.csv
+
