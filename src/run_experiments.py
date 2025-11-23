@@ -90,15 +90,24 @@ def _select_delete_indices(layout, n, frac, mode, few_shards_k, rng):
 # ---------------------- Plot helpers ----------------------
 
 def fig1_acc_vs_deleted(df, out_png, subtitle=None):
+    import matplotlib.pyplot as plt
     plt.figure()
-    xs = sorted([x for x in df["percent_deleted"].unique().tolist() if x != 0.0])
 
+    # X values are the deletion %s present in SISA-unlearned (if none, fall back to any >0 in df)
+    xs = sorted({float(x) for x in df["percent_deleted"].unique() if float(x) > 0.0})
+    if not xs:
+        plt.xlabel("% deleted"); plt.ylabel("Test accuracy")
+        t = "Fig-1: Test accuracy vs % deleted"
+        if subtitle: t += f"\n{subtitle}"
+        plt.title(t); plt.savefig(out_png, bbox_inches="tight"); plt.close(); return
+
+    # 1) Baseline: horizontal line at baseline acc across xs
     base = df[df["method"]=="SISA-baseline"]
-    if not base.empty and xs:
+    if not base.empty:
         base_acc = float(base.iloc[0]["accuracy"])
         plt.plot(xs, [base_acc]*len(xs), marker="o", label="SISA-baseline")
 
-    # prefer true naive if present
+    # 2) Naive (prefer true, else sim)
     naive_true = df[df["method"]=="Naive-delete"].sort_values("percent_deleted")
     if not naive_true.empty:
         plt.plot(naive_true["percent_deleted"], naive_true["accuracy"], marker="o", label="Naive-delete")
@@ -107,6 +116,7 @@ def fig1_acc_vs_deleted(df, out_png, subtitle=None):
         if not naive_sim.empty:
             plt.plot(naive_sim["percent_deleted"], naive_sim["accuracy"], marker="o", label="Naive-delete-sim")
 
+    # 3) SISA
     sisa = df[df["method"]=="SISA-unlearned"].sort_values("percent_deleted")
     if not sisa.empty:
         plt.plot(sisa["percent_deleted"], sisa["accuracy"], marker="o", label="SISA-unlearned")
@@ -114,26 +124,27 @@ def fig1_acc_vs_deleted(df, out_png, subtitle=None):
     plt.xlabel("% deleted"); plt.ylabel("Test accuracy")
     title = "Fig-1: Test accuracy vs % deleted"
     if subtitle: title += f"\n{subtitle}"
-    plt.title(title)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(out_png, bbox_inches="tight")
-    plt.close()
+    plt.title(title); plt.legend(); plt.tight_layout()
+    plt.savefig(out_png, bbox_inches="tight"); plt.close()
+
 
 def fig2_time_saved_vs_naive(df, out_png, subtitle=None):
+    import numpy as np, matplotlib.pyplot as plt
     plt.figure()
-    sisa = df[df["method"] == "SISA-unlearned"].sort_values("percent_deleted")
-    if sisa.empty:
+
+    sisa = df[df["method"]=="SISA-unlearned"].sort_values("percent_deleted")
+    xs = sisa["percent_deleted"].tolist()
+    if not xs:
         plt.xlabel("% deleted"); plt.ylabel("Time saved (s)")
         t = "Fig-2: Time saved vs Naive-delete"
         if subtitle: t += f"\n{subtitle}"
-        plt.title(t)
-        plt.savefig(out_png, bbox_inches="tight"); plt.close(); return
+        plt.title(t); plt.savefig(out_png, bbox_inches="tight"); plt.close(); return
 
-    xs = sisa["percent_deleted"].tolist()
-    naive_df = df[df["method"] == "Naive-delete"].set_index("percent_deleted")
+    # Prefer true naive times; else use baseline time as the “full retrain” time
+    naive_df = df[df["method"]=="Naive-delete"].set_index("percent_deleted")
     if not naive_df.empty:
         full_times = [float(naive_df.loc[x, "time"]) if x in naive_df.index else np.nan for x in xs]
+        # fill missing with baseline time
         base = df[df["method"]=="SISA-baseline"]
         baseline_time = float(base.iloc[0]["time"]) if not base.empty else max(sisa["time"].tolist())
         full_times = [baseline_time if (isinstance(t, float) and np.isnan(t)) else t for t in full_times]
@@ -142,18 +153,18 @@ def fig2_time_saved_vs_naive(df, out_png, subtitle=None):
         baseline_time = float(base.iloc[0]["time"]) if not base.empty else max(sisa["time"].tolist())
         full_times = [baseline_time for _ in xs]
 
-    time_saved = [max(ft - st, 0.0) for ft, st in zip(full_times, sisa["time"].tolist())]
+    sisa_times = sisa["time"].astype(float).tolist()
+    time_saved = [max(ft - st, 0.0) for ft, st in zip(full_times, sisa_times)]
 
+    # Plot: SISA time-saved curve and a zero line for naive
     plt.plot(xs, time_saved, marker="o", linewidth=2, label="SISA-unlearned")
     plt.plot(xs, [0.0]*len(xs), marker="o", linestyle="--", linewidth=2, label="Naive-delete")
+
     plt.xlabel("% deleted"); plt.ylabel("Time saved (s)")
     t = "Fig-2: Time saved vs Naive-delete"
     if subtitle: t += f"\n{subtitle}"
-    plt.title(t)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(out_png, bbox_inches="tight")
-    plt.close()
+    plt.title(t); plt.legend(); plt.tight_layout()
+    plt.savefig(out_png, bbox_inches="tight"); plt.close()
 
 def fig3_mia_auc_grouped(df, out_png, subtitle=None):
     xs = sorted([x for x in df["percent_deleted"].unique().tolist() if x != 0.0])
